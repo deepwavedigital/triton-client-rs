@@ -44,7 +44,8 @@ futures = { version = "0.3", default-features = false, features = ["alloc"] }
 js-sys = { version = "0.3", default-features = false }
 httparse = { version = "1", default-features = false }
 hyper = { version = "0.14", default-features = false }
-
+tokio = { version = "1.20.1", features = ["rt", "rt-multi-thread", "macros"] }
+tokio-stream = "*"
 
 [build-dependencies]
 walkdir = "2"

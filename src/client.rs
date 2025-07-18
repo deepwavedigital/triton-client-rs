@@ -6,7 +6,9 @@ use tonic::service::Interceptor;
 use tonic::transport::channel::ClientTlsConfig;
 use tonic::transport::Channel;
 use tonic::{service::interceptor::InterceptedService, Status};
-
+use tonic::{Request, Streaming};
+use tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::mpsc;
 use super::inference;
 use super::inference::grpc_inference_service_client::GrpcInferenceServiceClient;
 
@@ -102,6 +104,31 @@ impl Client {
         );
 
         Ok(Client { inner: client })
+    }
+    pub async fn model_stream_infer(
+        &self,
+    ) -> Result<
+        (
+            mpsc::Sender<inference::ModelInferRequest>,
+            Streaming<inference::ModelStreamInferResponse>,
+        ),
+        Error,
+    > {
+        // Create an async mpsc channel for sending requests
+        let (tx, rx) = mpsc::channel::<inference::ModelInferRequest>(16);
+
+        // Convert the receiver into a stream
+        let request_stream = ReceiverStream::new(rx);
+
+        // Send the stream request to the Triton server
+        let response_stream = self
+            .inner
+            .clone()
+            .model_stream_infer(Request::new(request_stream))
+            .await?
+            .into_inner();
+
+        Ok((tx, response_stream))
     }
 
     wrap_grpc_method_no_args!(
