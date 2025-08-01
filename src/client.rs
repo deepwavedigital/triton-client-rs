@@ -79,8 +79,8 @@ macro_rules! wrap_grpc_streaming_method {
         pub async fn $name(
             &mut self,
             req: impl tonic::IntoStreamingRequest<Message = $req_type>,
-        ) -> Result<tonic::Response<$resp_type>, tonic::Status> {
-            self.inner.clone().$name(req).await
+        ) -> Result<tonic::Response<$resp_type>, Error> {
+            Ok(self.inner.clone().$name(req).await?)
         }
     };
 }
