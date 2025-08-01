@@ -6,11 +6,11 @@ use tonic::service::Interceptor;
 use tonic::transport::channel::ClientTlsConfig;
 use tonic::transport::Channel;
 use tonic::{service::interceptor::InterceptedService, Status};
-use tonic::{Request, Streaming};
-use tokio_stream::wrappers::ReceiverStream;
+use tonic::Streaming;
 use tokio::sync::mpsc;
 use super::inference;
 use super::inference::grpc_inference_service_client::GrpcInferenceServiceClient;
+
 
 /// Adds bearer token auth to [`Client`]
 #[derive(Clone)]
@@ -73,6 +73,18 @@ macro_rules! wrap_grpc_method {
     };
 }
 
+macro_rules! wrap_grpc_streaming_method {
+    ($doc:literal, $name:ident, $req_type:ty, $resp_type:ty) => {
+        #[doc = $doc]
+        pub async fn $name(
+            &mut self,
+            req: impl tonic::IntoStreamingRequest<Message = $req_type>,
+        ) -> Result<tonic::Response<$resp_type>, tonic::Status> {
+            self.inner.clone().$name(req).await
+        }
+    };
+}
+
 macro_rules! wrap_grpc_method_no_args {
     ($doc:literal, $name:ident, $req_type:ty, $resp_type:ty) => {
         #[doc=$doc]
@@ -104,31 +116,6 @@ impl Client {
         );
 
         Ok(Client { inner: client })
-    }
-    pub async fn model_stream_infer(
-        &self,
-    ) -> Result<
-        (
-            mpsc::Sender<inference::ModelInferRequest>,
-            Streaming<inference::ModelStreamInferResponse>,
-        ),
-        Error,
-    > {
-        // Create an async mpsc channel for sending requests
-        let (tx, rx) = mpsc::channel::<inference::ModelInferRequest>(16);
-
-        // Convert the receiver into a stream
-        let request_stream = ReceiverStream::new(rx);
-
-        // Send the stream request to the Triton server
-        let response_stream = self
-            .inner
-            .clone()
-            .model_stream_infer(Request::new(request_stream))
-            .await?
-            .into_inner();
-
-        Ok((tx, response_stream))
     }
 
     wrap_grpc_method_no_args!(
@@ -167,6 +154,12 @@ impl Client {
         model_infer,
         inference::ModelInferRequest,
         inference::ModelInferResponse
+    );
+    wrap_grpc_streaming_method!(
+        "Perform inference using a specific model.",
+        model_stream_infer,
+        inference::ModelInferRequest,
+        Streaming<inference::ModelStreamInferResponse>
     );
     wrap_grpc_method!(
         "Get model configuration.",
