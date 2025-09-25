@@ -35,9 +35,9 @@ fn main() -> Result<()> {
         println!("cargo:rerun-if-changed={}", path.display());
     }
 
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(true)
-        .compile(&protobuf_paths, &[&pb_dir])
+        .compile_protos(&protobuf_paths, &[pb_dir])
         .context("unable to compile Protocol Buffers for the Triton client")?;
 
     Ok(())
