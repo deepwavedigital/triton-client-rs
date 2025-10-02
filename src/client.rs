@@ -6,9 +6,10 @@ use tonic::service::Interceptor;
 use tonic::transport::channel::ClientTlsConfig;
 use tonic::transport::Channel;
 use tonic::{service::interceptor::InterceptedService, Status};
-
+use tonic::Streaming;
 use super::inference;
 use super::inference::grpc_inference_service_client::GrpcInferenceServiceClient;
+
 
 /// Adds bearer token auth to [`Client`]
 #[derive(Clone)]
@@ -67,6 +68,18 @@ macro_rules! wrap_grpc_method {
         pub async fn $name(&self, req: $req_type) -> Result<$resp_type, Error> {
             let response = self.inner.clone().$name(tonic::Request::new(req)).await?;
             Ok(response.into_inner())
+        }
+    };
+}
+
+macro_rules! wrap_grpc_streaming_method {
+    ($doc:literal, $name:ident, $req_type:ty, $resp_type:ty) => {
+        #[doc = $doc]
+        pub async fn $name(
+            &mut self,
+            req: impl tonic::IntoStreamingRequest<Message = $req_type>,
+        ) -> Result<tonic::Response<$resp_type>, Error> {
+            Ok(self.inner.clone().$name(req).await?)
         }
     };
 }
@@ -140,6 +153,12 @@ impl Client {
         model_infer,
         inference::ModelInferRequest,
         inference::ModelInferResponse
+    );
+    wrap_grpc_streaming_method!(
+        "Perform inference using a specific model.",
+        model_stream_infer,
+        inference::ModelInferRequest,
+        Streaming<inference::ModelStreamInferResponse>
     );
     wrap_grpc_method!(
         "Get model configuration.",
