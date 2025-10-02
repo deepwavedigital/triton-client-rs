@@ -7,7 +7,6 @@ use tonic::transport::channel::ClientTlsConfig;
 use tonic::transport::Channel;
 use tonic::{service::interceptor::InterceptedService, Status};
 use tonic::Streaming;
-use tokio::sync::mpsc;
 use super::inference;
 use super::inference::grpc_inference_service_client::GrpcInferenceServiceClient;
 
